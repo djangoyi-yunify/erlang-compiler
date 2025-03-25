@@ -69,4 +69,4 @@ jobs:
       with:
         files: |
           release/kylin-*/*
-        tag_name: redis-${{ inputs.erlangv }}_kylin-${{ inputs.osv }}
+        tag_name: erlang-${{ inputs.erlangv }}_kylin-${{ inputs.osv }}
