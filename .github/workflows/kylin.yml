@@ -31,7 +31,7 @@ jobs:
       working-directory: /tmp
     - name: compile erlang
       run: |
-        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp/otp_src_${{ inputs.erlangv }}:/workspace -w /workspace djangoyi/erlang-compiler:kylin-${{ inputs.osv }} bash -c "mkdir output && ./configure && make && make DESTDIR=output install"
+        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp/otp_src_${{ inputs.erlangv }}:/workspace -w /workspace djangoyi/erlang-compiler:kylin-${{ inputs.osv }} bash -c "mkdir output && ./configure && make && make DESTDIR=/workspace/output install"
     - name: pack bin files
       run: |
         tar -czf /tmp/erlang-${{ inputs.erlangv }}-${{ matrix.platform }}.tgz /tmp/output/*
