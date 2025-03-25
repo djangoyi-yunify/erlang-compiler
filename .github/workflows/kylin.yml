@@ -12,8 +12,6 @@ on:
         default: '10sp3'
         required: false
         type: string
-env:
-  REDIS_BIN_FILES: redis-benchmark,redis-check-aof,redis-check-rdb,redis-cli,redis-sentinel,redis-server
 
 jobs:
   compile:
@@ -25,13 +23,13 @@ jobs:
     steps:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
-    - name: Prepare redis src
+    - name: Prepare erlang src
       run: |
         wget https://github.com/erlang/otp/releases/download/OTP-${{ inputs.erlangv }}/otp_src_${{ inputs.erlangv }}.tar.gz
         tar -xzf otp_src_${{ inputs.erlangv }}.tar.gz
         ls -lh otp_src_${{ inputs.erlangv }}
       working-directory: /tmp
-    - name: compile redis && strip binaries
+    - name: compile erlang
       run: |
         docker run --platform linux/${{ matrix.platform }} --rm -v /tmp/otp_src_${{ inputs.erlangv }}:/workspace -w /workspace djangoyi/erlang-compiler:kylin-${{ inputs.osv }} bash -c "mkdir output && ./configure && make && make DESTDIR=output install"
     - name: pack bin files
