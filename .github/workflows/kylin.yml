@@ -1,0 +1,74 @@
+name: Compiler workflow for kylin
+on:
+  workflow_dispatch:
+    inputs:
+      erlangv:
+        description: 'erlang version'
+        default: '24.2.2'
+        required: false
+        type: string
+      osv:
+        description: 'kylin version'
+        default: '10sp3'
+        required: false
+        type: string
+env:
+  REDIS_BIN_FILES: redis-benchmark,redis-check-aof,redis-check-rdb,redis-cli,redis-sentinel,redis-server
+
+jobs:
+  compile:
+    strategy:
+      matrix:
+        platform: ["amd64", "arm64"]
+        # platform: ["amd64"]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Prepare redis src
+      run: |
+        wget https://github.com/erlang/otp/releases/download/OTP-${{ inputs.erlangv }}/otp_src_${{ inputs.erlangv }}.tar.gz
+        tar -xzf otp_src_${{ inputs.erlangv }}.tar.gz
+        ls -lh otp_src_${{ inputs.erlangv }}
+      working-directory: /tmp
+    - name: compile redis && strip binaries
+      run: |
+        docker run --platform linux/${{ matrix.platform }} --rm -v /tmp/otp_src_${{ inputs.erlangv }}:/workspace -w /workspace djangoyi/erlang-compiler:kylin-${{ inputs.osv }} bash -c "./configure && make && make DESTDIR=output install)"
+    - name: pack bin files
+      run: |
+        tar -czf /tmp/erlang-${{ inputs.erlangv }}-${{ matrix.platform }}.tgz /tmp/output/*
+      working-directory: /tmp
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: kylin-${{ matrix.platform }}
+        path: /tmp/erlang-${{ inputs.erlangv }}-${{ matrix.platform }}.tgz
+
+  release:
+    runs-on: ubuntu-latest
+    needs: compile
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    # - name: Remove release
+    #   uses: liudonghua123/delete-release-action@v1
+    #   with:
+    #     release_name: redis-${{ inputs.redisv }}_ubuntu-${{ inputs.osv }}
+    #     suppress_errors: true
+    # - name: Remove tag
+    #   run: |
+    #     git tag -d mongo-${{ needs.export.outputs.mongo }}_ubuntu-${{ needs.export.outputs.ubuntu }} || :
+    #     git push origin --delete mongo-${{ needs.export.outputs.mongo }}_ubuntu-${{ needs.export.outputs.ubuntu }} || :
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        pattern: kylin-*
+        path: release
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          release/kylin-*/*
+        tag_name: redis-${{ inputs.erlangv }}_kylin-${{ inputs.osv }}
